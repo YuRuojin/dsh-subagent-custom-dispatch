@@ -48,10 +48,6 @@ git+https://github.com/YuRuojin/dsh-subagent-custom-dispatch.git
 
 Put this directory on the machine and paste its absolute path into **Plugins → Add plugin**.
 
-### Option 3: npm (not published yet)
-
-`dsh-subagent-custom-dispatch` is not published on npm yet (the name is still free), so installing by package name does not work today. Once published, paste the name into **Plugins → Add plugin**; until then use the Git or local-directory options above.
-
 After installing, enable the plugin on the **Plugins** page.
 
 ## First-run setup (two steps)
