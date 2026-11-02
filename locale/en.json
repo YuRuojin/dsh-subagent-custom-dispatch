@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Subagent Role Cards",
+    "description": "Fixed role cards for subagent dispatch: pick each role's model, write the dispatch rule the main model sees, and the brief the child receives."
+  }
+}
