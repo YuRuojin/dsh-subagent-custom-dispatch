@@ -48,9 +48,9 @@ git+https://github.com/YuRuojin/dsh-subagent-custom-dispatch.git
 
 把本目录放到本机，在 **Plugins → Add plugin** 里填它的绝对路径。
 
-### 方式三：npm
+### 方式三：npm（尚未发布，暂不可用）
 
-发布到 npm 后，在 **Plugins → Add plugin** 里填包名。
+`dsh-subagent-custom-dispatch` 这个包名目前还没有发布到 npm（名字仍可用），所以现在不能按包名安装。发布之后可以在 **Plugins → Add plugin** 里填包名；在那之前请用上面的 Git 或本地目录方式。
 
 安装完成后回到 **Plugins** 页启用本插件。
 
