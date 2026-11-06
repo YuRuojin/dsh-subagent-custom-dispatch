@@ -21,34 +21,55 @@
 
 ## 安装
 
-### 方式一：Git 仓库（推荐）
+在 DSH 侧边栏 **Plugins → Add plugin** 里粘贴下面任意一行即可，不用 `git clone`，也不用配置 SSH key：
 
-在 DSH 侧边栏 **Plugins → Add plugin** 里粘贴仓库地址，国内、国外各一个：
-
-国内（AtomGit，访问更快）：
+国内（GitCode，推荐；与 AtomGit 是同一仓库，二选一即可）：
 
 ```
-git+ssh://git@atomgit.com/yuruojin/dsh-subagent-custom-dispatch.git
-```
-
-国外（GitHub）：
-
-```
-git+ssh://git@github.com/YuRuojin/dsh-subagent-custom-dispatch.git
-```
-
-SSH 地址要求本机已配置对应平台的 SSH key；没有配置的话改用 HTTPS：
-
-```
+git+https://gitcode.com/yuruojin/dsh-subagent-custom-dispatch.git
 git+https://atomgit.com/yuruojin/dsh-subagent-custom-dispatch.git
-git+https://github.com/YuRuojin/dsh-subagent-custom-dispatch.git
 ```
 
-### 方式二：本地目录
+GitHub：
+
+```
+https://github.com/YuRuojin/dsh-subagent-custom-dispatch
+```
+
+`git+https://` 是 pnpm 的 Git 协议写法，DSH 会把输入交给 pnpm 处理。GitCode 和 AtomGit 都不在 pnpm 的托管 Git 平台列表里，必须带这个前缀；只写 `https://gitcode.com/...` 或 `https://atomgit.com/...` 会被当成压缩包下载并报 gzip 解码失败。GitHub 地址可以直接用普通 https 链接，能否连通取决于网络。
+
+已配置 SSH key 的话也可以换成 `git+ssh://...`；没配置会报 `Permission denied (publickey)`，这不是 DSH 版本问题。
+
+### 安装源（Add plugin 右上角）
+
+在 **Plugins → Add plugin** 里展开 **插件安装引导和示例**，右上角的 **安装源** 决定 npm 包和依赖从哪里下载：
+
+| 选项 | 什么时候用 |
+|---|---|
+| 第一项（显示本机 pnpm 配置的源，例如 `repo.huaweicloud.com`） | 本机已配置可用镜像，且插件包/依赖在该源上存在 |
+| 中国大陆镜像源 `registry.npmmirror.com` | 按 npm 包名安装、国内加速；刚发布的包可能要等镜像同步 |
+| 自定义地址 | 指定 npm 官方源 `https://registry.npmjs.org/`，或内网/私有源；需要登录的源把凭据放在本机 `~/.npmrc` |
+
+两点容易误会：
+
+- GitCode / GitHub 的仓库本身直接从 Git 主机克隆，不经过这个安装源；但插件的 npm 依赖（`@deepseek-ai/schemastery`）仍从安装源下载，所以 Git 安装也可能因为源里缺依赖而失败。
+- 按包名安装时，如果提示 `not-found` 或没有匹配版本，先换安装源，或等镜像同步；Git 安装不受新包同步延迟影响。
+
+当前这版界面没有单独的“npm 官方源”选项；要用官方源，选 **自定义地址** 并填 `https://registry.npmjs.org/`。
+
+### 本地目录
 
 把本目录放到本机，在 **Plugins → Add plugin** 里填它的绝对路径。
 
+### npm 包名
+
+发布到 npm 后，可以直接在 **Plugins → Add plugin** 里填包名或 `包名@版本`。目前尚未发布，先用上面的 Git 或本地目录方式。
+
 安装完成后回到 **Plugins** 页启用本插件。
+
+### 版本兼容性
+
+本插件没有声明 `engines.dsh`，也没有声明 `@deepseek-ai/dsh*` 的 `peerDependencies`，所以 DSH 不会按版本号拒绝安装它。DSH 的“不兼容”提示只对声明了这两类字段的插件出现；如果安装失败，请展开安装详情看 pnpm 的原始输出——通常是网络、SSH key 或 Git 地址格式的问题。
 
 ## 首次配置（两步）
 
@@ -108,6 +129,17 @@ A：先在第 1 步勾选；插件不会列出未勾选的模型。
 **Q：改了没反应？**
 A：模型/名称/规则/提示词保存即生效；**增删身份**需要关掉再打开一次插件，让工具的身份集合重新注册。
 
+**Q：输入包名提示未找到 / 没有匹配版本？**
+A：安装源里还没有这个包或版本。换 **中国大陆镜像源**，或在 **自定义地址** 里填 npm 官方源 `https://registry.npmjs.org/`；也可以等镜像同步。Git 安装不受新包同步延迟影响。
+
+**Q：Add plugin 一直安装失败？**
+A：打开安装详情看最后几行 pnpm 输出：
+
+- `Permission denied (publickey)`：用了 SSH 地址但本机没有对应 key，换成上面的 https 地址。
+- `ERR_PNPM_TARBALL_DECODE_GZIP`：GitCode/AtomGit 地址少了 `git+` 前缀，被当成压缩包。
+- `Could not connect to server` / `ETIMEDOUT` / `Failed to connect`：网络到不了该 Git 主机，改用 GitCode/AtomGit 或 npm 包名。
+- `incompatible-version`：才是 DSH 的版本检查；本插件没有声明版本要求，正常不会出现。
+
 ## 开发
 
 - `index.js`：Host 半，注册工具与系统提示词段落。
@@ -117,6 +149,23 @@ A：模型/名称/规则/提示词保存即生效；**增删身份**需要关掉
 - `icon.jpg`：图标（512×512，上限 256 KiB）。
 
 依赖：`@deepseek-ai/schemastery`（随包安装）。
+
+### 发布到 npm
+
+包名 `dsh-subagent-custom-dispatch` 目前在 npm 上可用。发布前确认当前目录就是本插件的仓库副本，且 `package.json` 里没有 `"private": true`：
+
+```sh
+npm login --registry=https://registry.npmjs.org/
+npm pack --dry-run   # 检查 files 是否覆盖 index.js、client.js、cordis.patch.yml、locale、icon
+npm publish --registry=https://registry.npmjs.org/
+```
+
+显式写 `--registry` 是因为本机 npm 常配置了国内镜像（华为云、npmmirror 等），不写会发到镜像而不是 npm 官方源。发布后 `npm view dsh-subagent-custom-dispatch version --registry=https://registry.npmjs.org/` 能看到版本，DSH 的 **Add plugin** 就可以直接填包名。升级时改 `version` 再发布。如果包名已被占用，改用带 scope 的名字（如 `@<npm账号>/dsh-subagent-custom-dispatch`），发布时加 `--access public`，安装时填完整的 scoped 名。
+
+安装端还有两个坑：
+
+- DSH 用 pnpm 当前配置的安装源。如果本机 `.npmrc` 指向第三方镜像，在 **Add plugin** 的“安装源”里选 **自定义地址**，填 `https://registry.npmjs.org/`（当前界面没有单独的“npm 官方源”选项）；否则 DSH 只会问那个镜像。镜像通常需要一点时间同步新包。
+- pnpm 的 `minimumReleaseAge` 默认 24 小时，刚发布的版本可能不会被自动选中；安装详情会提示实际安装的版本，必要时用 `包名@版本` 指定。
 
 ## 许可与致谢
 
