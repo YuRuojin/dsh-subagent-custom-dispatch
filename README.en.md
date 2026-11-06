@@ -21,34 +21,55 @@ DSH's built-in `subagent` is "ask a generic child to do the work". This plugin g
 
 ## Install
 
-### Option 1: Git repository (recommended)
+Paste either line into DSH's **Plugins → Add plugin**. No `git clone` and no SSH key needed:
 
-Paste a repository address into DSH's **Plugins → Add plugin**. One mirror for China, one for the rest of the world:
-
-China (AtomGit, usually faster):
+China (GitCode, recommended; the same repository as AtomGit, pick either):
 
 ```
-git+ssh://git@atomgit.com/yuruojin/dsh-subagent-custom-dispatch.git
+git+https://gitcode.com/yuruojin/dsh-subagent-custom-dispatch.git
+git+https://atomgit.com/yuruojin/dsh-subagent-custom-dispatch.git
 ```
 
 International (GitHub):
 
 ```
-git+ssh://git@github.com/YuRuojin/dsh-subagent-custom-dispatch.git
+https://github.com/YuRuojin/dsh-subagent-custom-dispatch
 ```
 
-SSH addresses require an SSH key for that platform on this machine. Without one, use HTTPS:
+`git+https://` is pnpm's Git protocol form; DSH hands the input to pnpm. Neither GitCode nor AtomGit is one of pnpm's recognized hosted Git platforms, so the prefix is required — a bare `https://gitcode.com/...` or `https://atomgit.com/...` URL is downloaded as a tarball and fails with a gzip error. The GitHub URL works as a plain https link, subject to network reachability.
 
-```
-git+https://atomgit.com/yuruojin/dsh-subagent-custom-dispatch.git
-git+https://github.com/YuRuojin/dsh-subagent-custom-dispatch.git
-```
+If this machine already has an SSH key for that host, `git+ssh://...` also works; without one it fails with `Permission denied (publickey)`, which is not a DSH version issue.
 
-### Option 2: Local directory
+### Install source (top right of Add plugin)
+
+In **Plugins → Add plugin**, expand the install guide; the **Install source** selector at its top right decides where npm packages and their dependencies are downloaded (shown as `安装源` in the Chinese UI):
+
+| Option | When to use it |
+|---|---|
+| First entry (pnpm's configured registry, e.g. `repo.huaweicloud.com`) | A usable mirror is configured on this machine and the plugin/dependencies exist there |
+| China mainland mirror `registry.npmmirror.com` | Install by npm name with faster access in China; a brand-new release may need time to sync |
+| Custom address | npm's official registry `https://registry.npmjs.org/`, or an internal/private registry; put credentials in this machine's `~/.npmrc` |
+
+Two points that surprise people:
+
+- The GitCode / GitHub repository itself is cloned directly from the Git host, not through this source; but the plugin's npm dependency (`@deepseek-ai/schemastery`) still comes from that source, so a Git install can fail when the source lacks a dependency.
+- For install-by-name, `not-found` or no matching version usually means the selected source has not synced the package/version yet; switch sources or wait. Git installs do not wait for mirror sync.
+
+The current dialog has no separate "npm official" entry; choose **Custom address** and enter `https://registry.npmjs.org/`.
+
+### Local directory
 
 Put this directory on the machine and paste its absolute path into **Plugins → Add plugin**.
 
+### npm package name
+
+Once published, paste the bare package name (or `name@version`) into **Plugins → Add plugin**. It is not published yet; use the Git or local-directory form above for now.
+
 After installing, enable the plugin on the **Plugins** page.
+
+### Version compatibility
+
+This plugin declares neither `engines.dsh` nor any `@deepseek-ai/dsh*` `peerDependencies`, so DSH never refuses it based on the DSH version. DSH's "incompatible" rejection only applies to plugins that declare those fields; when an install fails here, open the install details and read the raw pnpm output — it is normally network, SSH-key, or Git-URL formatting.
 
 ## First-run setup (two steps)
 
@@ -104,6 +125,15 @@ The plugin starts the child through the official subagent runtime (in-process `s
 
 **Edits do not apply?** Model/name/rule/brief apply on save. **Adding or removing identities** needs a plugin toggle so the tool's identity set is re-registered.
 
+**Install by name says not found / no matching version?** The selected install source has not synced the package or version yet. Switch to the China mainland mirror or **Custom address** with npm's official registry, or wait for sync; Git installs do not wait for mirror sync.
+
+**Add plugin keeps failing?** Open the install details and read the last pnpm lines:
+
+- `Permission denied (publickey)`: an SSH address is used without a key on this machine; switch to the https line above.
+- `ERR_PNPM_TARBALL_DECODE_GZIP`: the GitCode/AtomGit address is missing the `git+` prefix and was fetched as a tarball.
+- `Could not connect to server` / `ETIMEDOUT` / `Failed to connect`: the network cannot reach that Git host; use GitCode/AtomGit or the npm name.
+- `incompatible-version`: this is DSH's version check; this plugin declares no version requirement, so it should not appear.
+
 ## Development
 
 - `index.js` — Host half: registers the tool and the system-prompt section.
@@ -113,6 +143,23 @@ The plugin starts the child through the official subagent runtime (in-process `s
 - `icon.jpg` — icon (512×512, max 256 KiB).
 
 Dependency: `@deepseek-ai/schemastery` (installed with the package).
+
+### Publishing to npm
+
+The name `dsh-subagent-custom-dispatch` is currently free on npm. Publish from the plugin's repository copy, and make sure `package.json` has no `"private": true`:
+
+```sh
+npm login --registry=https://registry.npmjs.org/
+npm pack --dry-run   # confirm files covers index.js, client.js, cordis.patch.yml, locale, icon
+npm publish --registry=https://registry.npmjs.org/
+```
+
+The explicit `--registry` matters because a local npm setup often points at a China mirror (Huawei Cloud, npmmirror, …); without it the publish goes to the mirror, not npm. Afterwards `npm view dsh-subagent-custom-dispatch version --registry=https://registry.npmjs.org/` shows the release, and **Add plugin** accepts the bare package name. Bump `version` to publish an update. If the name is taken, use a scope (for example `@<npm-user>/dsh-subagent-custom-dispatch`), publish with `--access public`, and install with the full scoped name.
+
+Two consumer-side pitfalls:
+
+- DSH installs from pnpm's configured registry. If this machine's `.npmrc` points at a third-party mirror, choose **Custom address** in the **Add plugin** install-source selector and enter `https://registry.npmjs.org/` (there is no separate "npm official" entry in the current dialog); otherwise DSH asks only that mirror, which needs time to sync a new package.
+- pnpm's `minimumReleaseAge` defaults to 24 hours, so a just-published version may not be selected automatically; the install details name the installed version, and `name@version` pins the intended one.
 
 ## License and credits
 
