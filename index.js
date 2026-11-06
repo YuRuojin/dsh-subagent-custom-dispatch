@@ -95,13 +95,31 @@ function routeLabel(agent) {
 }
 
 /**
+ * Dispatch policy shown above the identity list.
+ *
+ * A bare roster only states that identities exist; the main model then keeps
+ * doing the work itself. These lines give positive triggers and name the cases
+ * that should stay local, which is what actually moves the decision.
+ * Edit this constant to make dispatch more or less eager.
+ */
+const DISPATCH_POLICY = [
+  '派单优先级：先看能不能派，再决定自己做还是派。',
+  '- 任务能拆成两个以上互不依赖的部分：连续调用多次 `dispatch_subagent`，并行派出去。',
+  '- 明显属于下面某个身份的专长：派给它，不要自己从零实现。',
+  '- 只需要一个独立第二意见：直接派，不要先自己写一版再自审。',
+  '不必派单：一句话就能答完、强依赖本对话上下文、或必须由你亲自执行才能继续的任务；也不要为派单而派单。',
+  '如果你是被派来的子智能体（提示词开头写着你的身份职责），直接完成手里的任务，不要再派单。',
+].join('\n')
+
+/**
  * Compose the main-model-visible dispatch list from each identity's own rule.
  * @param agents - currently usable identities.
  * @returns the system-prompt section text.
  */
 function renderRoster(agents) {
   const header = '## 子智能体派单\n' +
-    '需要子智能体时，从下列身份中选一个，调用 `dispatch_subagent`；`agent` 填括号里的 id，task 写全（目标、输入、约束、期望产出）。身份提示词由插件附带，不需要你复述。'
+    '需要子智能体时，从下列身份中选一个，调用 `dispatch_subagent`；`agent` 填括号里的 id，task 写全（目标、输入、约束、期望产出）。身份提示词由插件附带，不需要你复述。\n\n' +
+    DISPATCH_POLICY
   if (agents.length === 0) {
     return `${header}\n\n（当前没有可用身份：官方 Plugins → Subagent → Model selection 未开启、未勾选对应模型，或 provider 未接入。）`
   }
@@ -149,6 +167,7 @@ export function apply(ctx, config) {
     name: toolName,
     description:
       '把一个自足的任务派给一个具名子智能体，立即返回子任务 id，完成后以完成通知返回结果。' +
+      '任务可拆分、可并行、或明显属于某个身份职责时优先派单；要同时派多个就连续调用多次。' +
       '可选身份、各自固定的模型与适用场景见系统提示词「子智能体派单」一节；agent 必须是那一节里的 id，不要自造。' +
       '身份提示词由插件自动带上，task 只需写任务本身。',
     parameters: {
